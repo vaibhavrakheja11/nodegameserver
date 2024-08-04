@@ -1,12 +1,10 @@
 const http = require('http');
 const hostname = '0.0.0.0'; // Allows external connections
-const port = process.env.PORT || 5000;
-const fs = require('fs');
+const port = process.env.PORT || 3000;
 const socketIo = require('socket.io');
 const cors = require('cors');
 const express = require('express');
 const app = express();
-
 let count = 0;
 let socketUrl = ''; // Variable to store the socket URL
 
@@ -37,7 +35,7 @@ let clientCount = 0;
 io.on('connection', (socket) => {
   console.log('A Unity client connected');
   clientCount++;
-  
+
   // Store the connected socket URL
   socketUrl = socket.handshake.headers.origin || 'URL not available';
   io.emit('clientCount', { count: clientCount });
