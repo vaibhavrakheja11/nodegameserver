@@ -1,18 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Socket.IO Client Test</title>
+    <title>Socket.IO Chat Client</title>
 </head>
 <body>
-    <h1>Socket.IO Client Test</h1>
+    <h1>Socket.IO Chat Client</h1>
     <button id="readyBtn">Ready Up</button>
     <p id="status"></p>
+    <div id="chat" style="display: none;">
+        <div id="messages"></div>
+        <input id="messageInput" type="text" placeholder="Type a message...">
+        <button id="sendBtn">Send</button>
+    </div>
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
     <script>
-        const socket = io('https://nodegameserver-1.onrender.com/', { path: '/gameserver/' });
+        const socket = io('https://your-server-url:3000', { path: '/gameserver/' });
 
         const readyBtn = document.getElementById('readyBtn');
         const status = document.getElementById('status');
+        const chat = document.getElementById('chat');
+        const messages = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        let sessionId;
 
         readyBtn.addEventListener('click', () => {
             socket.emit('ready');
@@ -20,26 +30,40 @@
             readyBtn.disabled = true;
         });
 
+        sendBtn.addEventListener('click', () => {
+            const message = messageInput.value;
+            if (message) {
+                socket.emit('message', { sessionId, message });
+                messageInput.value = '';
+            }
+        });
+
         socket.on('waitingForPartner', () => {
             status.textContent = 'Waiting for a partner...';
         });
 
         socket.on('sessionReady', (data) => {
+            sessionId = data.sessionId;
             status.textContent = `Session ready! Session ID: ${data.sessionId}`;
+            chat.style.display = 'block';
             readyBtn.disabled = true;
         });
 
-        socket.on('message', (message) => {
-            console.log('Received message:', message);
+        socket.on('message', (data) => {
+            const messageElement = document.createElement('p');
+            messageElement.textContent = data.message;
+            messages.appendChild(messageElement);
         });
 
         socket.on('partnerDisconnected', () => {
             status.textContent = 'Your partner has disconnected. Waiting for a new partner...';
+            chat.style.display = 'none';
             readyBtn.disabled = false;
         });
 
         socket.on('disconnect', () => {
             status.textContent = 'Disconnected from the server';
+            chat.style.display = 'none';
             readyBtn.disabled = false;
         });
     </script>
