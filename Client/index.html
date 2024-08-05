@@ -115,13 +115,10 @@
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 peerConnection = new RTCPeerConnection(peerConnectionConfig);
+                peerConnection.addStream(localStream);
 
-                // Add each track to the peer connection
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                peerConnection.ontrack = (event) => {
-                    const [stream] = event.streams;
-                    remoteAudio.srcObject = stream;
+                peerConnection.onaddstream = (event) => {
+                    remoteAudio.srcObject = event.stream;
                 };
 
                 peerConnection.onicecandidate = (event) => {
