@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Socket.IO Chat Client</title>
+    <title>Socket.IO Chat Client with Audio</title>
 </head>
 <body>
-    <h1>Socket.IO Chat Client</h1>
+    <h1>Socket.IO Chat Client with Audio</h1>
     <button id="readyBtn">Ready Up</button>
     <p id="status"></p>
     <div id="chat" style="display: none;">
@@ -12,9 +12,12 @@
         <input id="messageInput" type="text" placeholder="Type a message...">
         <button id="sendBtn">Send</button>
     </div>
+    <div id="audio" style="display: none;">
+        <audio id="remoteAudio" autoplay></audio>
+    </div>
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
     <script>
-        const socket = io('https://your-server-url:3000', { path: '/gameserver/' });
+        const socket = io('https://nodegameserver-1.onrender.com/', { path: '/gameserver/' });
 
         const readyBtn = document.getElementById('readyBtn');
         const status = document.getElementById('status');
@@ -22,7 +25,16 @@
         const messages = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
+        const remoteAudio = document.getElementById('remoteAudio');
         let sessionId;
+        let localStream;
+        let peerConnection;
+
+        const peerConnectionConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
+        };
 
         readyBtn.addEventListener('click', () => {
             socket.emit('ready');
@@ -47,6 +59,9 @@
             status.textContent = `Session ready! Session ID: ${data.sessionId}`;
             chat.style.display = 'block';
             readyBtn.disabled = true;
+
+            // Start WebRTC connection
+            startWebRTC();
         });
 
         socket.on('message', (data) => {
@@ -59,13 +74,58 @@
             status.textContent = 'Your partner has disconnected. Waiting for a new partner...';
             chat.style.display = 'none';
             readyBtn.disabled = false;
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
         });
 
         socket.on('disconnect', () => {
             status.textContent = 'Disconnected from the server';
             chat.style.display = 'none';
             readyBtn.disabled = false;
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
         });
+
+        socket.on('signal', async (data) => {
+            if (data.sessionId === sessionId) {
+                if (data.signal.type === 'offer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    socket.emit('signal', { sessionId, signal: peerConnection.localDescription });
+                } else if (data.signal.type === 'answer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+                } else if (data.signal.type === 'candidate') {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.signal.candidate));
+                }
+            }
+        });
+
+        async function startWebRTC() {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            peerConnection = new RTCPeerConnection(peerConnectionConfig);
+            peerConnection.addStream(localStream);
+
+            peerConnection.onaddstream = (event) => {
+                remoteAudio.srcObject = event.stream;
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('signal', { sessionId, signal: { type: 'candidate', candidate: event.candidate } });
+                }
+            };
+
+            if (!peerConnection.currentRemoteDescription) {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                socket.emit('signal', { sessionId, signal: peerConnection.localDescription });
+            }
+        }
     </script>
 </body>
 </html>
