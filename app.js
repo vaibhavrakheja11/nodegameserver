@@ -62,6 +62,12 @@ io.on('connection', (socket) => {
     io.to(`session_${data.sessionId}`).emit('message', data);
   });
 
+  // Handle WebRTC signaling messages
+  socket.on('signal', (data) => {
+    console.log('Signal received:', data);
+    io.to(`session_${data.sessionId}`).emit('signal', data);
+  });
+
   // Handle client disconnection
   socket.on('disconnect', () => {
     console.log('A client disconnected');
