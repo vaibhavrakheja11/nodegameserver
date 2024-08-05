@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Client Test</title>
+</head>
+<body>
+    <h1>Socket.IO Client Test</h1>
+    <button id="readyBtn">Ready Up</button>
+    <p id="status"></p>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <script>
+        const socket = io('https://nodegameserver-1.onrender.com/', { path: '/gameserver/' });
+
+        const readyBtn = document.getElementById('readyBtn');
+        const status = document.getElementById('status');
+
+        readyBtn.addEventListener('click', () => {
+            socket.emit('ready');
+            status.textContent = 'Waiting for a partner...';
+            readyBtn.disabled = true;
+        });
+
+        socket.on('waitingForPartner', () => {
+            status.textContent = 'Waiting for a partner...';
+        });
+
+        socket.on('sessionReady', (data) => {
+            status.textContent = `Session ready! Session ID: ${data.sessionId}`;
+            readyBtn.disabled = true;
+        });
+
+        socket.on('message', (message) => {
+            console.log('Received message:', message);
+        });
+
+        socket.on('partnerDisconnected', () => {
+            status.textContent = 'Your partner has disconnected. Waiting for a new partner...';
+            readyBtn.disabled = false;
+        });
+
+        socket.on('disconnect', () => {
+            status.textContent = 'Disconnected from the server';
+            readyBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>
