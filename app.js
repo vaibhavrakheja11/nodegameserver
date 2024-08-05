@@ -30,68 +30,60 @@ const io = socketIo(server, {
   path: '/gameserver/'
 });
 
-let clientCount = 0;
-const sessions = {};
+let sessions = [];
+let waitingClient = null;
 
 io.on('connection', (socket) => {
-  console.log('A Unity client connected');
-  clientCount++;
-
+  console.log('A client connected');
+  
   // Store the connected socket URL
   socketUrl = socket.handshake.headers.origin || 'URL not available';
-  io.emit('clientCount', { count: clientCount });
-
+  
   socket.on('ready', () => {
-    if (clientCount % 2 === 0) {
-      const sessionId = `session-${Math.floor(clientCount / 2)}`;
-      sessions[sessionId] = { users: [socket.id] };
-      socket.join(sessionId);
-      io.to(sessionId).emit('waitingForPartner');
+    if (waitingClient) {
+      // Create a new session with two clients
+      let sessionId = sessions.length;
+      sessions.push([waitingClient, socket]);
+      waitingClient.join(`session_${sessionId}`);
+      socket.join(`session_${sessionId}`);
+      io.to(`session_${sessionId}`).emit('sessionReady', { sessionId });
+      waitingClient = null;
     } else {
-      const sessionId = `session-${Math.floor((clientCount - 1) / 2)}`;
-      if (sessions[sessionId]) {
-        sessions[sessionId].users.push(socket.id);
-        socket.join(sessionId);
-        io.to(sessionId).emit('sessionReady', { sessionId });
-      }
+      // Set this client as waiting for the next one
+      waitingClient = socket;
+      socket.emit('waitingForPartner');
     }
   });
 
+  // Handle incoming messages from clients
   socket.on('message', (data) => {
     console.log('Message received:', data);
-    io.to(data.sessionId).emit('message', data);
+    // Broadcast the message to all clients in the same session
+    io.to(`session_${data.sessionId}`).emit('message', data);
   });
 
-  socket.on('offer', (data) => {
-    socket.to(data.sessionId).emit('offer', data);
+  // Handle WebRTC signaling messages
+  socket.on('signal', (data) => {
+    console.log('Signal received:', data);
+    io.to(`session_${data.sessionId}`).emit('signal', data);
   });
 
-  socket.on('answer', (data) => {
-    socket.to(data.sessionId).emit('answer', data);
-  });
-
-  socket.on('iceCandidate', (data) => {
-    socket.to(data.sessionId).emit('iceCandidate', data);
-  });
-
+  // Handle client disconnection
   socket.on('disconnect', () => {
-    console.log('A Unity client disconnected');
-    clientCount--;
-    io.emit('clientCount', { count: clientCount });
-    socketUrl = '';
-
-    for (let sessionId in sessions) {
-      const index = sessions[sessionId].users.indexOf(socket.id);
-      if (index !== -1) {
-        sessions[sessionId].users.splice(index, 1);
-        if (sessions[sessionId].users.length === 0) {
-          delete sessions[sessionId];
-        } else {
-          io.to(sessionId).emit('partnerDisconnected');
-        }
-        break;
+    console.log('A client disconnected');
+    if (waitingClient === socket) {
+      waitingClient = null;
+    } else {
+      // Find the session this client was part of
+      let sessionIndex = sessions.findIndex(session => session.includes(socket));
+      if (sessionIndex !== -1) {
+        // Remove the client from the session
+        let session = sessions[sessionIndex];
+        sessions[sessionIndex] = session.filter(client => client !== socket);
+        io.to(`session_${sessionIndex}`).emit('partnerDisconnected');
       }
     }
+    socketUrl = '';
   });
 });
 
