@@ -42,6 +42,7 @@ io.on('connection', (socket) => {
   io.emit('clientCount', { count: clientCount });
 
   socket.on('ready', () => {
+    console.log('Client is ready');
     let sessionId;
     for (let id in sessions) {
       if (sessions[id].users.length < 2) {
@@ -71,14 +72,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('offer', (data) => {
+    console.log('Offer received:', data);
     socket.to(data.sessionId).emit('offer', data);
   });
 
   socket.on('answer', (data) => {
+    console.log('Answer received:', data);
     socket.to(data.sessionId).emit('answer', data);
   });
 
   socket.on('iceCandidate', (data) => {
+    console.log('ICE Candidate received:', data);
     socket.to(data.sessionId).emit('iceCandidate', data);
   });
 
