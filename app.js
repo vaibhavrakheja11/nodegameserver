@@ -39,19 +39,21 @@ io.on('connection', (socket) => {
   // Store the connected socket URL
   socketUrl = socket.handshake.headers.origin || 'URL not available';
   
-  if (waitingClient) {
-    // Create a new session with two clients
-    let sessionId = sessions.length;
-    sessions.push([waitingClient, socket]);
-    waitingClient.join(`session_${sessionId}`);
-    socket.join(`session_${sessionId}`);
-    io.to(`session_${sessionId}`).emit('sessionReady', { sessionId });
-    waitingClient = null;
-  } else {
-    // Set this client as waiting for the next one
-    waitingClient = socket;
-    socket.emit('waitingForPartner');
-  }
+  socket.on('ready', () => {
+    if (waitingClient) {
+      // Create a new session with two clients
+      let sessionId = sessions.length;
+      sessions.push([waitingClient, socket]);
+      waitingClient.join(`session_${sessionId}`);
+      socket.join(`session_${sessionId}`);
+      io.to(`session_${sessionId}`).emit('sessionReady', { sessionId });
+      waitingClient = null;
+    } else {
+      // Set this client as waiting for the next one
+      waitingClient = socket;
+      socket.emit('waitingForPartner');
+    }
+  });
 
   // Handle incoming messages from clients
   socket.on('message', (data) => {
