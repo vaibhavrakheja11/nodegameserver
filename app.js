@@ -43,8 +43,8 @@ io.on('connection', (socket) => {
       const sessionId = waitingClient.id + '#' + socket.id;
       sessions[sessionId] = [waitingClient, socket];
       
-      waitingClient.emit('sessionReady', { sessionId });
-      socket.emit('sessionReady', { sessionId });
+      waitingClient.emit('sessionReady', { sessionId, player: 'Player 1' });
+      socket.emit('sessionReady', { sessionId, player: 'Player 2' });
       
       waitingClient = null;
     } else {
@@ -54,12 +54,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('message', (data) => {
-    console.log(`Message from ${socket.id} in session ${data.sessionId}: `, data.message);
+    console.log(`Message from ${socket.id} (${data.player}) in session ${data.sessionId}: `, data.message);
     const [client1, client2] = sessions[data.sessionId] || [];
     const partner = client1 === socket ? client2 : client1;
 
     if (partner) {
-      partner.emit('message', data);
+      partner.emit('message', { player: data.player, message: data.message });
     }
   });
 
@@ -90,6 +90,16 @@ io.on('connection', (socket) => {
 
     if (partner) {
       partner.emit('iceCandidate', data);
+    }
+  });
+
+  socket.on('audioData', (data) => {
+    console.log(`Audio data received from ${socket.id} in session ${data.sessionId}`);
+    const [client1, client2] = sessions[data.sessionId] || [];
+    const partner = client1 === socket ? client2 : client1;
+
+    if (partner) {
+      partner.emit('audioData', data);
     }
   });
 
