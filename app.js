@@ -30,78 +30,62 @@ const io = socketIo(server, {
   path: '/gameserver/'
 });
 
-let clientCount = 0;
-let sessions = {};
+let sessions = [];
+let waitingClient = null;
 
 io.on('connection', (socket) => {
   console.log('A client connected');
-  clientCount++;
-
+  
+  // Store the connected socket URL
+  socketUrl = socket.handshake.headers.origin || 'URL not available';
+  
   socket.on('ready', () => {
-    let sessionId = findOrCreateSession(socket);
-    socket.join(sessionId);
-    io.to(sessionId).emit('sessionReady', { sessionId });
-
-    // Store the connected socket URL
-    socketUrl = socket.handshake.headers.origin || 'URL not available';
-    io.emit('clientCount', { count: clientCount });
+    if (waitingClient) {
+      // Create a new session with two clients
+      let sessionId = sessions.length;
+      sessions.push([waitingClient, socket]);
+      waitingClient.join(`session_${sessionId}`);
+      socket.join(`session_${sessionId}`);
+      io.to(`session_${sessionId}`).emit('sessionReady', { sessionId });
+      waitingClient = null;
+    } else {
+      // Set this client as waiting for the next one
+      waitingClient = socket;
+      socket.emit('waitingForPartner');
+    }
   });
 
+  // Handle incoming messages from clients
   socket.on('message', (data) => {
     console.log('Message received:', data);
-    io.to(data.sessionId).emit('message', { message: data.message });
+    // Broadcast the message to all clients in the same session
+    io.to(`session_${data.sessionId}`).emit('message', data);
   });
 
+  // Handle WebRTC signaling messages
   socket.on('signal', (data) => {
-    io.to(data.sessionId).emit('signal', { sessionId: data.sessionId, signal: data.signal });
+    console.log('Signal received:', data);
+    io.to(`session_${data.sessionId}`).emit('signal', data);
   });
 
+  // Handle client disconnection
   socket.on('disconnect', () => {
     console.log('A client disconnected');
-    clientCount--;
-    socketUrl = '';
-    io.emit('clientCount', { count: clientCount });
-
-    let sessionId = removeClientFromSession(socket);
-    if (sessionId) {
-      io.to(sessionId).emit('partnerDisconnected');
+    if (waitingClient === socket) {
+      waitingClient = null;
+    } else {
+      // Find the session this client was part of
+      let sessionIndex = sessions.findIndex(session => session.includes(socket));
+      if (sessionIndex !== -1) {
+        // Remove the client from the session
+        let session = sessions[sessionIndex];
+        sessions[sessionIndex] = session.filter(client => client !== socket);
+        io.to(`session_${sessionIndex}`).emit('partnerDisconnected');
+      }
     }
+    socketUrl = '';
   });
 });
-
-function findOrCreateSession(socket) {
-  let availableSession = Object.keys(sessions).find(
-    sessionId => sessions[sessionId].length === 1
-  );
-
-  if (availableSession) {
-    sessions[availableSession].push(socket.id);
-    return availableSession;
-  }
-
-  let sessionId = generateSessionId();
-  sessions[sessionId] = [socket.id];
-  return sessionId;
-}
-
-function removeClientFromSession(socket) {
-  for (let sessionId in sessions) {
-    let session = sessions[sessionId];
-    let index = session.indexOf(socket.id);
-    if (index !== -1) {
-      session.splice(index, 1);
-      if (session.length === 0) {
-        delete sessions[sessionId];
-      }
-      return sessionId;
-    }
-  }
-  return null;
-}
-
-function generateSessionId() {
-  return 'session-' + Math.random().toString(36).substr(2, 9);
-}
 
 // Start the server
 server.listen(port, hostname, () => {
