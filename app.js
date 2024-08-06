@@ -61,6 +61,8 @@ io.on('connection', (socket) => {
     if (partner) {
       partner.emit('message', { player: data.player, message: data.message });
     }
+    // Emit message back to sender as well
+    socket.emit('message', { player: data.player, message: data.message });
   });
 
   socket.on('positionUpdate', (data) => {
