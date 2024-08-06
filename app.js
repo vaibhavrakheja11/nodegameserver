@@ -36,7 +36,6 @@ let sessions = {};
 io.on('connection', (socket) => {
   console.log('A client connected: ', socket.id);
 
-  // Handle 'ready' event
   socket.on('ready', () => {
     console.log('Client ready: ', socket.id);
 
@@ -54,7 +53,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle text message
   socket.on('message', (data) => {
     console.log(`Message from ${socket.id} (${data.player}) in session ${data.sessionId}: `, data.message);
     const [client1, client2] = sessions[data.sessionId] || [];
@@ -65,7 +63,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle WebRTC signaling messages
+  socket.on('positionUpdate', (data) => {
+    console.log(`Position update from ${socket.id} (${data.player}) in session ${data.sessionId}: `, data.position);
+    const [client1, client2] = sessions[data.sessionId] || [];
+    const partner = client1 === socket ? client2 : client1;
+
+    if (partner) {
+      partner.emit('positionUpdate', { player: data.player, position: data.position });
+    }
+  });
+
   socket.on('offer', (data) => {
     console.log(`Offer from ${socket.id} in session ${data.sessionId}`);
     const [client1, client2] = sessions[data.sessionId] || [];
@@ -96,18 +103,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle audio data
-  socket.on('audioData', (data) => {
-    console.log(`Audio data received from ${socket.id} in session ${data.sessionId}`);
-    const [client1, client2] = sessions[data.sessionId] || [];
-    const partner = client1 === socket ? client2 : client1;
-
-    if (partner) {
-      partner.emit('audioData', data);
-    }
-  });
-
-  // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected: ', socket.id);
     if (waitingClient === socket) {
