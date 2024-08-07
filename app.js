@@ -5,8 +5,6 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const express = require('express');
 const app = express();
-let count = 0;
-let socketUrl = ''; // Variable to store the socket URL
 
 // Enable CORS for all routes
 app.use(cors());
@@ -16,9 +14,8 @@ const server = http.createServer(app);
 // Serve a simple response for the root path
 app.get('/', (req, res) => {
   res.statusCode = 200;
-  count++;
   res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World! NodeJS \n You are visitor number: ' + count + `\n Server running at http://${hostname}:${port}/ URL ${socketUrl}`);
+  res.end('Hello World! NodeJS \n Server running at http://' + hostname + ':' + port);
 });
 
 // Initialize Socket.IO and attach it to the HTTP server
