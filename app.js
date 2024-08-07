@@ -5,23 +5,22 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const express = require('express');
 const app = express();
+let count = 0;
 
-// Enable CORS for all routes
 app.use(cors());
 
 const server = http.createServer(app);
 
-// Serve a simple response for the root path
 app.get('/', (req, res) => {
   res.statusCode = 200;
+  count++;
   res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World! NodeJS \n Server running at http://' + hostname + ':' + port);
+  res.end('Hello World! NodeJS \n You are visitor number: ' + count);
 });
 
-// Initialize Socket.IO and attach it to the HTTP server
 const io = socketIo(server, {
   cors: {
-    origin: '*', // Allow all origins (you can specify your domain instead)
+    origin: '*',
     methods: ['GET', 'POST']
   },
   path: '/gameserver/'
@@ -29,11 +28,11 @@ const io = socketIo(server, {
 
 let waitingClient = null;
 let sessions = {};
+let playerCounter = 0; // Counter to assign unique player IDs
 
 io.on('connection', (socket) => {
   console.log('A client connected: ', socket.id);
 
-  // Listen for client type
   socket.on('clientType', (type) => {
     if (type === 'Unity') {
       console.log(`Unity client connected: ${socket.id}`);
@@ -49,10 +48,12 @@ io.on('connection', (socket) => {
 
     if (waitingClient) {
       const sessionId = waitingClient.id + '#' + socket.id;
+      const player1Id = `player-${++playerCounter}`;
+      const player2Id = `player-${++playerCounter}`;
       sessions[sessionId] = [waitingClient, socket];
       
-      waitingClient.emit('sessionReady', { sessionId, player: 'Player 1' });
-      socket.emit('sessionReady', { sessionId, player: 'Player 2' });
+      waitingClient.emit('sessionReady', { sessionId, playerId: player1Id });
+      socket.emit('sessionReady', { sessionId, playerId: player2Id });
       
       waitingClient = null;
     } else {
@@ -69,7 +70,6 @@ io.on('connection', (socket) => {
     if (partner) {
       partner.emit('message', { player: data.player, message: data.message });
     }
-    // Emit message back to sender as well
     socket.emit('message', { player: data.player, message: data.message });
   });
 
@@ -133,7 +133,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start the server
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
 });
