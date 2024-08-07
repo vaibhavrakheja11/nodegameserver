@@ -36,6 +36,17 @@ let sessions = {};
 io.on('connection', (socket) => {
   console.log('A client connected: ', socket.id);
 
+  // Listen for client type
+  socket.on('clientType', (type) => {
+    if (type === 'Unity') {
+      console.log(`Unity client connected: ${socket.id}`);
+    } else if (type === 'HTML') {
+      console.log(`HTML client connected: ${socket.id}`);
+    } else {
+      console.log(`Unknown client type connected: ${socket.id}`);
+    }
+  });
+
   socket.on('ready', () => {
     console.log('Client ready: ', socket.id);
 
