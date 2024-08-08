@@ -17,7 +17,9 @@
     </div>
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
     <script>
-        const socket = io('https://nodegameserver-1.onrender.com/', { path: '/gameserver/' });
+        //const socket = io('https://nodegameserver-1.onrender.com/', { path: '/gameserver/' });
+
+        const socket = io('http://0.0.0.0:3000/', { path: '/gameserver/' });
 
         const readyBtn = document.getElementById('readyBtn');
         const status = document.getElementById('status');
