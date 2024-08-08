@@ -1,138 +1,83 @@
-const http = require('http');
-const hostname = '0.0.0.0'; // Allows external connections
-const port = process.env.PORT || 3000;
-const socketIo = require('socket.io');
-const cors = require('cors');
-const express = require('express');
-const app = express();
-let count = 0;
+const io = require('socket.io')(process.env.PORT || 3000);
+var shortid = require('shortid');
 
-app.use(cors());
+console.log('server started');
 
-const server = http.createServer(app);
-
-app.get('/', (req, res) => {
-  res.statusCode = 200;
-  count++;
-  res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World! NodeJS \n You are visitor number: ' + count);
-});
-
-const io = socketIo(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
-  path: '/gameserver/'
-});
-
-let waitingClient = null;
-let sessions = {};
-let playerCounter = 0; // Counter to assign unique player IDs
+var players = [];
 
 io.on('connection', (socket) => {
-  console.log('A client connected: ', socket.id);
+  console.log('client Connected');
 
-  socket.on('clientType', (type) => {
-    if (type === 'Unity') {
-      console.log(`Unity client connected: ${socket.id}`);
-    } else if (type === 'HTML') {
-      console.log(`HTML client connected: ${socket.id}`);
-    } else {
-      console.log(`Unknown client type connected: ${socket.id}`);
-    }
+  var thisPlayerId = shortid.generate();
+  
+  var player = {
+    id: thisPlayerId,
+    x:0, 
+    y:0
+  }
+
+  players[thisPlayerId] = player;
+
+  console.log('client conencted id:', thisPlayerId);
+  socket.emit('register', { id: thisPlayerId});
+  socket.broadcast.emit('spawn', {id: thisPlayerId});
+  socket.broadcast.emit('requestPosition' ); 
+
+  //players who connected lately can see other players who connected before 
+
+  for(var playerId in players){
+    if (playerId == thisPlayerId)
+      continue;
+
+    socket.emit('spawn', players[playerId]);
+
+    console.log('sending spawn to new player for id :', playerId);
+  }
+ 
+
+  socket.on('move', (data) => {
+    data.id = thisPlayerId;
+    console.log('client moved', JSON.stringify(data));
+
+    player.x = data.x;
+    player.y = data.y;
+    
+    socket.broadcast.emit('move', data);
+
   });
 
-  socket.on('ready', () => {
-    console.log('Client ready: ', socket.id);
+  socket.on('updatePosition', (data) => {
+    console.log("update position: ", data);
 
-    if (waitingClient) {
-      const sessionId = waitingClient.id + '#' + socket.id;
-      const player1Id = `player-${++playerCounter}`;
-      const player2Id = `player-${++playerCounter}`;
-      sessions[sessionId] = [waitingClient, socket];
-      
-      waitingClient.emit('sessionReady', { sessionId, playerId: player1Id });
-      socket.emit('sessionReady', { sessionId, playerId: player2Id });
-      
-      waitingClient = null;
-    } else {
-      waitingClient = socket;
-      socket.emit('waitingForPartner');
-    }
+    data.id = thisPlayerId;
+
+    socket.broadcast.emit('updatePosition' , data);
   });
 
-  socket.on('message', (data) => {
-    console.log(`Message from ${socket.id} (${data.player}) in session ${data.sessionId}: `, data.message);
-    const [client1, client2] = sessions[data.sessionId] || [];
-    const partner = client1 === socket ? client2 : client1;
+ 
 
-    if (partner) {
-      partner.emit('message', { player: data.player, message: data.message });
-    }
-    socket.emit('message', { player: data.player, message: data.message });
+  socket.on('follow', (data) => {
+    console.log("follow request: ", data);
+
+    data.id = thisPlayerId;
+
+    socket.broadcast.emit('follow' , data);
   });
 
-  socket.on('positionUpdate', (data) => {
-    console.log(`Position update from ${socket.id} (${data.player}) in session ${data.sessionId}: `, data.position);
-    const [client1, client2] = sessions[data.sessionId] || [];
-    const partner = client1 === socket ? client2 : client1;
+  socket.on('attack', (data) => {
+    console.log("attack request: ", data);
 
-    if (partner) {
-      partner.emit('positionUpdate', { player: data.player, position: data.position });
-    }
-  });
+    data.id = thisPlayerId;
 
-  socket.on('offer', (data) => {
-    console.log(`Offer from ${socket.id} in session ${data.sessionId}`);
-    const [client1, client2] = sessions[data.sessionId] || [];
-    const partner = client1 === socket ? client2 : client1;
-
-    if (partner) {
-      partner.emit('offer', data);
-    }
-  });
-
-  socket.on('answer', (data) => {
-    console.log(`Answer from ${socket.id} in session ${data.sessionId}`);
-    const [client1, client2] = sessions[data.sessionId] || [];
-    const partner = client1 === socket ? client2 : client1;
-
-    if (partner) {
-      partner.emit('answer', data);
-    }
-  });
-
-  socket.on('iceCandidate', (data) => {
-    console.log(`ICE candidate from ${socket.id} in session ${data.sessionId}`);
-    const [client1, client2] = sessions[data.sessionId] || [];
-    const partner = client1 === socket ? client2 : client1;
-
-    if (partner) {
-      partner.emit('iceCandidate', data);
-    }
+    io.emit('attack' , data);
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected: ', socket.id);
-    if (waitingClient === socket) {
-      waitingClient = null;
-    } else {
-      for (const sessionId in sessions) {
-        const [client1, client2] = sessions[sessionId];
-        if (client1 === socket || client2 === socket) {
-          const partner = client1 === socket ? client2 : client1;
-          if (partner) {
-            partner.emit('partnerDisconnected');
-          }
-          delete sessions[sessionId];
-          break;
-        }
-      }
-    }
-  });
-});
+    console.log('client Disconnected');
 
-server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
+    delete players[thisPlayerId];
+
+    socket.broadcast.emit('disconnected',{id: thisPlayerId});
+  })
+
+})
