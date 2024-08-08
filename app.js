@@ -41,6 +41,11 @@ io.on('connection', (socket) => {
     } else {
       console.log(`Unknown client type connected: ${socket.id}`);
     }
+
+    socket.on("test", data => {
+      console.log(data);
+    });
+
   });
 
   socket.on('ready', () => {
