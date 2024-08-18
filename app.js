@@ -45,6 +45,7 @@ const { createServer } = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const cors = require('cors');
+const crypto = require('crypto'); // Ensure crypto is required for UUID and binary data
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -73,15 +74,21 @@ app.get('/', (req, res) => {
 const server = createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Handle WebSocket connections
+// Heartbeat mechanism to keep connections alive
+function heartbeat() {
+    this.isAlive = true;
+}
+
 wss.on('connection', function(ws) {
     const clientId = crypto.randomUUID();  // Generate a unique client ID
     ws.clientId = clientId;
+    ws.isAlive = true;
+    ws.on('pong', heartbeat);  // Listen for pong messages to confirm the client is alive
 
     console.log(`Client connected: ID=${clientId}, IP=${ws._socket.remoteAddress}`);
 
+    // Set intervals to send text and binary data to the client
     const textInterval = setInterval(() => ws.send("hello world!"), 5000);
-
     const binaryInterval = setInterval(() => {
         const binaryData = crypto.randomBytes(8).buffer;
         ws.send(binaryData);
@@ -97,9 +104,34 @@ wss.on('connection', function(ws) {
 
     ws.on('close', function() {
         console.log(`Client disconnected: ID=${clientId}, IP=${ws._socket.remoteAddress}`);
-        clearInterval(textInterval);
+        clearInterval(textInterval);  // Clear the intervals when the client disconnects
         clearInterval(binaryInterval);
     });
+
+    ws.on('error', function(err) {
+        console.error(`Error on client connection (ID=${clientId}):`, err);
+        clearInterval(textInterval);  // Ensure intervals are cleared even on error
+        clearInterval(binaryInterval);
+        ws.terminate();  // Close the connection on error
+    });
+});
+
+// Periodically check if clients are alive
+const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            console.log(`Terminating stale connection: ID=${ws.clientId}`);
+            return ws.terminate();  // Terminate unresponsive connections
+        }
+
+        ws.isAlive = false;
+        ws.ping(() => {});  // Send a ping to the client
+    });
+}, 30000);  // Check every 30 seconds
+
+// Handle server shutdown
+wss.on('close', function() {
+    clearInterval(interval);  // Clear the global interval when the server closes
 });
 
 // Start the server
