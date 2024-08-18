@@ -40,7 +40,6 @@
 // server.listen(port, host, () => {
 //   console.log(`Server running at http://${host}:${port}/`);
 // });
-
 const crypto = require('crypto');
 const express = require('express');
 const { createServer } = require('http');
@@ -48,9 +47,7 @@ const WebSocket = require('ws');
 const cors = require('cors');
 
 const app = express();
-
-const port = process.env.PORT || 3000;
-const host = 'localhost';  // Change this to 'localhost'
+const port = 3000;
 
 // Add CORS middleware to allow requests from any origin
 app.use(cors());
@@ -61,31 +58,40 @@ const wss = new WebSocket.Server({ server });
 
 // Handle WebSocket connections
 wss.on('connection', function(ws) {
-  console.log("client joined.");
+  const clientId = crypto.randomUUID();  // Generate a unique client ID
 
-  // send "hello world" interval
-  const textInterval = setInterval(() => ws.send("hello world!"), 100);
+  // Associate the client ID with the WebSocket connection
+  ws.clientId = clientId;
 
-  // send random bytes interval
-  const binaryInterval = setInterval(() => ws.send(crypto.randomBytes(8).buffer), 110);
+  console.log(`Client connected: ID=${clientId}, IP=${ws._socket.remoteAddress}`);
+
+  // send "hello world" every 5 seconds
+  const textInterval = setInterval(() => ws.send("hello world!"), 5000);
+
+  // send random bytes every 6 seconds
+  const binaryInterval = setInterval(() => {
+    const binaryData = crypto.randomBytes(8).buffer;
+    ws.send(binaryData);
+  }, 6000);
 
   ws.on('message', function(data) {
     if (typeof(data) === "string") {
-      // client sent a string
-      console.log("string received from client -> '" + data + "'");
+      // Log only the first 100 characters of the string to avoid log spamming
+      console.log(`String received from client (ID=${clientId}):`, data.slice(0, 100), data.length > 100 ? "..." : "");
     } else {
-      console.log("binary received from client -> " + Array.from(data).join(", ") + "");
+      // Log the binary data size instead of the full data to reduce log spamming
+      console.log(`Binary data received from client (ID=${clientId}), size:`, data.byteLength, "bytes");
     }
   });
 
   ws.on('close', function() {
-    console.log("client left.");
+    console.log(`Client disconnected: ID=${clientId}, IP=${ws._socket.remoteAddress}`);
     clearInterval(textInterval);
     clearInterval(binaryInterval);
   });
 });
 
 // Start the server
-server.listen(port, host, function() {
-  console.log(`Server running at http://${host}:${port}/`);
+server.listen(port, function() {
+  console.log(`Server listening on http://localhost:${port}`);
 });
