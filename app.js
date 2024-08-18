@@ -179,8 +179,8 @@ function createSession() {
     return session;
 }
 
-// Handle WebSocket connections
-wss.on('connection', function(ws) {
+// Function to handle client connection
+function handleConnection(ws) {
     let session = sessions.find(s => s.clients.length < 2);
     if (!session) {
         session = createSession();
@@ -192,6 +192,14 @@ wss.on('connection', function(ws) {
     session.clients.push(ws);
 
     console.log(`Client connected: ID=${clientId}, Session=${session.id}, IP=${ws._socket.remoteAddress}`);
+
+    // Send the client ID and session ID to the client
+    const initialMessage = JSON.stringify({
+        type: 'session',
+        clientId: clientId,
+        sessionId: session.id
+    });
+    ws.send(initialMessage);
 
     // Send a heartbeat to keep the connection alive
     const heartbeatInterval = setInterval(() => {
@@ -229,9 +237,13 @@ wss.on('connection', function(ws) {
             sessions = sessions.filter(s => s !== session);
         }
     });
-});
+}
+
+// Attach WebSocket connection handler
+wss.on('connection', handleConnection);
 
 // Start the server
 server.listen(port, () => {
   console.log(`Server listening on https://localhost:${port}`);
 });
+
