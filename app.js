@@ -4,10 +4,15 @@ const cors = require('cors');
 const express = require('express');
 
 const app = express();
-app.use(cors());
-const server = http.createServer(app);
-const io = socketIo(server);
 
+const server = http.createServer(app);
+const io = require('socket.io')(server, {
+  cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+  }
+});
+app.use(cors());
 const port = process.env.PORT || 3000;
 const host = 'localhost';  // Change this to 'localhost'
 
@@ -19,8 +24,8 @@ io.on('connection', (socket) => {
   socket.emit('welcome', { message: 'Welcome to the server!', id: socket.id });
 
   // Handle custom events from Unity clients
-  socket.on('customEvent', (data) => {
-    console.log(`Received custom event from ${socket.id}:`, data);
+  socket.on('test', (data) => {
+    console.log(`Received test event from ${socket.id}:`, data);
     // You can broadcast this data to all connected clients, if needed
     io.emit('customEventResponse', { message: `Message from ${socket.id}: ${data.message}` });
   });
