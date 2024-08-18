@@ -57,7 +57,7 @@ app.use(cors());
 
 // Serve static files from a different directory if needed
 // For example, if you have a 'public' directory now:
-app.use(express.static(path.join(__dirname, 'Client')));
+app.use(express.static(path.join(__dirname, 'Client', 'WebGL')));
 
 // Handle root route
 app.get('/', (req, res) => {
