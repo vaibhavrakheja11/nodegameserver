@@ -40,11 +40,11 @@
 // server.listen(port, host, () => {
 //   console.log(`Server running at http://${host}:${port}/`);
 // });
-const crypto = require('crypto');
 const express = require('express');
 const { createServer } = require('http');
-const WebSocket = require('ws');
+const socketIo = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const port = 3000;
@@ -55,51 +55,46 @@ let visitCount = 0;
 // Add CORS middleware to allow requests from any origin
 app.use(cors());
 
-// Serve a basic HTML file or handle root requests with visit count
+// Serve static files from the 'public/webgl' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve index.html and track visit count
 app.get('/', (req, res) => {
     visitCount++; // Increment the visit count
-    res.send(`<h1>Hello from the server!</h1><p>Server visit count: ${visitCount}</p>`);
+    // Serve the index.html file from the public/webgl directory
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-// Create the HTTP server and attach the WebSocket server to it
+
+// Create the HTTP server and attach the Socket.IO server to it
 const server = createServer(app);
-const wss = new WebSocket.Server({ server });
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 // Handle WebSocket connections
-wss.on('connection', function(ws) {
-  const clientId = crypto.randomUUID();  // Generate a unique client ID
+io.on('connection', (socket) => {
+    console.log('A client connected: ', socket.id);
 
-  // Associate the client ID with the WebSocket connection
-  ws.clientId = clientId;
+    // Send a welcome message to the client
+    socket.emit('welcome', { message: 'Welcome to the server!', id: socket.id });
 
-  console.log(`Client connected: ID=${clientId}, IP=${ws._socket.remoteAddress}`);
+    // Handle custom events from clients
+    socket.on('customEvent', (data) => {
+        console.log(`Received custom event from ${socket.id}:`, data);
+        // Broadcast this data to all connected clients
+        io.emit('customEventResponse', { message: `Message from ${socket.id}: ${data.message}` });
+    });
 
-  // send "hello world" every 5 seconds
-  const textInterval = setInterval(() => ws.send("hello world!"), 5000);
-
-  // send random bytes every 6 seconds
-  const binaryInterval = setInterval(() => {
-    const binaryData = crypto.randomBytes(8).buffer;
-    ws.send(binaryData);
-  }, 6000);
-
-  ws.on('message', function(data) {
-    if (typeof(data) === "string") {
-      // Log only the first 100 characters of the string to avoid log spamming
-      console.log(`String received from client (ID=${clientId}):`, data.slice(0, 100), data.length > 100 ? "..." : "");
-    } else {
-      // Log the binary data size instead of the full data to reduce log spamming
-      console.log(`Binary data received from client (ID=${clientId}), size:`, data.byteLength, "bytes");
-    }
-  });
-
-  ws.on('close', function() {
-    console.log(`Client disconnected: ID=${clientId}, IP=${ws._socket.remoteAddress}`);
-    clearInterval(textInterval);
-    clearInterval(binaryInterval);
-  });
+    // Handle disconnections
+    socket.on('disconnect', () => {
+        console.log('A client disconnected: ', socket.id);
+    });
 });
 
 // Start the server
-server.listen(port, function() {
-  console.log(`Server listening on http://localhost:${port}`);
+server.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
 });
