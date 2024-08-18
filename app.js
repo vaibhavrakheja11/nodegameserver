@@ -48,7 +48,9 @@ const WebSocket = require('ws');
 const cors = require('cors');
 
 const app = express();
-const port = 3000;
+
+const port = process.env.PORT || 3000;
+const host = 'localhost';  // Change this to 'localhost'
 
 // Add CORS middleware to allow requests from any origin
 app.use(cors());
@@ -84,6 +86,6 @@ wss.on('connection', function(ws) {
 });
 
 // Start the server
-server.listen(port, function() {
-  console.log(`Listening on http://localhost:${port}`);
+server.listen(port, host, function() {
+  console.log(`Server running at http://${host}:${port}/`);
 });
