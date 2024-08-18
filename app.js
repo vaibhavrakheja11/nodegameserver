@@ -55,14 +55,19 @@ let visitCount = 0;
 // Add CORS middleware to allow requests from any origin
 app.use(cors());
 
-// Serve static files from a different directory if needed
-// For example, if you have a 'public' directory now:
+// Serve static files from the 'Client/WebGL' directory
 app.use(express.static(path.join(__dirname, 'Client', 'WebGL')));
 
 // Handle root route
 app.get('/', (req, res) => {
     visitCount++; // Increment the visit count
-    res.send('<h1>Hello from the server!</h1><p>Server visit count: ' + visitCount + '</p>');
+    // Serve the index.html file from the Client/WebGL directory
+    res.sendFile(path.join(__dirname, 'Client', 'WebGL', 'index.html'), (err) => {
+        if (err) {
+            console.error(`Error serving index.html: ${err}`);
+            res.status(500).send('Internal Server Error');
+        }
+    });
 });
 
 // Create the HTTP server and attach the Socket.IO server to it
