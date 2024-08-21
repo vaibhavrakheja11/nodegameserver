@@ -13,7 +13,8 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'Client', 'WebGL')));
 
 let sessions = [];
-const LOG_INTERVAL = 1000;
+let lastLogTime = 0; // Timestamp of the last log
+const LOG_INTERVAL = 1000; // Log interval in milliseconds
 const UPDATE_INTERVAL = 50; // Reduce interval for more frequent updates (20 updates per second)
 
 app.get('/', (req, res) => {
