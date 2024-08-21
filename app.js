@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
 const host = 'localhost';  // Change this to your desired host
-
+  
 // CORS middleware to allow requests from any origin
 app.use(cors());
 
