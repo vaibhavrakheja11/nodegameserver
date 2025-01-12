@@ -7,6 +7,7 @@ const crypto = require('crypto');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const adminPassword = 'admin_password'; // Password for admin authentication
 
 // CORS middleware to allow requests from any origin
 app.use(cors());
@@ -15,9 +16,8 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'Client', 'Web')));
 
 let sessions = []; // Array to hold active sessions
-let adminSocket = null; // Variable to hold the WebSocket of the admin client
 
-// Handle root route to serve index.html (normal client page)
+// Handle root route to serve index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'Client', 'Web', 'index.html'), (err) => {
         if (err) {
@@ -25,11 +25,6 @@ app.get('/', (req, res) => {
             res.status(500).send('Internal Server Error');
         }
     });
-});
-
-// Handle the admin page
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Client', 'Web', 'admin.html'));
 });
 
 // Create the HTTP server and attach the WebSocket server to it
@@ -67,24 +62,30 @@ function handleConnection(ws) {
     });
     ws.send(initialMessage);
 
-    // Send the updated session list to the admin (if admin is connected)
-    if (adminSocket) {
-        const adminUpdateMessage = JSON.stringify({
-            type: 'update_sessions',
-            sessions: sessions.map(s => ({
-                id: s.id,
-                clientCount: s.clients.length
-            }))
-        });
-        adminSocket.send(adminUpdateMessage);
-    }
-
     // Send a heartbeat to keep the connection alive
     const heartbeatInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
             ws.ping();
         }
     }, 10000);
+
+    // Handle incoming messages from the client
+    ws.on('message', function(data) {
+        if (data === adminPassword) {
+            // Admin authentication: send session updates
+            ws.isAdmin = true; // Mark the WebSocket as an admin
+            console.log('Admin authenticated');
+            ws.send(JSON.stringify({
+                type: 'update_sessions',
+                sessions: sessions.map(session => ({
+                    id: session.id,
+                    clientCount: session.clients.length
+                }))
+            }));
+        } else {
+            console.log(`Message from client (ID=${clientId}, Session=${session.id}): ${data}`);
+        }
+    });
 
     // Handle client disconnection
     ws.on('close', function() {
@@ -97,50 +98,28 @@ function handleConnection(ws) {
             sessions = sessions.filter(s => s !== session);
         }
 
-        // Send the updated session list to the admin (if admin is connected)
-        if (adminSocket) {
-            const adminUpdateMessage = JSON.stringify({
-                type: 'update_sessions',
-                sessions: sessions.map(s => ({
-                    id: s.id,
-                    clientCount: s.clients.length
-                }))
+        // Send session update to admin
+        if (ws.isAdmin) {
+            // Notify admin about session update
+            wss.clients.forEach(client => {
+                if (client.isAdmin) {
+                    client.send(JSON.stringify({
+                        type: 'update_sessions',
+                        sessions: sessions.map(session => ({
+                            id: session.id,
+                            clientCount: session.clients.length
+                        }))
+                    }));
+                }
             });
-            adminSocket.send(adminUpdateMessage);
         }
     });
 }
-
-// Admin connection handler
-wss.on('connection', (ws) => {
-    // Authenticate admin
-    ws.on('message', (message) => {
-        if (message === 'admin_password') {
-            // Password is correct, make this WebSocket the admin socket
-            adminSocket = ws;
-            console.log("Admin connected!");
-            ws.send(JSON.stringify({ type: 'admin_authenticated' }));
-
-            // Send current sessions data to the admin
-            const adminUpdateMessage = JSON.stringify({
-                type: 'update_sessions',
-                sessions: sessions.map(s => ({
-                    id: s.id,
-                    clientCount: s.clients.length
-                }))
-            });
-            ws.send(adminUpdateMessage);
-        } else {
-            ws.send(JSON.stringify({ type: 'admin_error', message: 'Invalid password' }));
-            ws.close();
-        }
-    });
-});
 
 // Attach WebSocket connection handler
 wss.on('connection', handleConnection);
 
 // Start the server
 server.listen(port, () => {
-  console.log(`Server listening on https://localhost:${port}`);
+    console.log(`Server listening on https://localhost:${port}`);
 });
