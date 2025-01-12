@@ -106,6 +106,7 @@ function handleConnection(ws, req) {
         console.log(`Message received from client: ${data}`);
 
         if (data === adminPassword) {
+            console.log('Admin password matched. Authenticating...');
             // Admin authentication
             ws.isAdmin = true;
             adminClients.push(ws); // Add to admin list
