@@ -11,12 +11,13 @@ const port = process.env.PORT || 3000;
 // CORS middleware to allow requests from any origin
 app.use(cors());
 
-// Serve static files from the 'Client/WebGL' directory
+// Serve static files from the 'Client/Web' directory
 app.use(express.static(path.join(__dirname, 'Client', 'Web')));
 
 let sessions = []; // Array to hold active sessions
+let adminSocket = null; // Variable to hold the WebSocket of the admin client
 
-// Handle root route to serve index.html
+// Handle root route to serve index.html (normal client page)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'Client', 'Web', 'index.html'), (err) => {
         if (err) {
@@ -24,6 +25,11 @@ app.get('/', (req, res) => {
             res.status(500).send('Internal Server Error');
         }
     });
+});
+
+// Handle the admin page
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'Client', 'Web', 'admin.html'));
 });
 
 // Create the HTTP server and attach the WebSocket server to it
@@ -61,6 +67,18 @@ function handleConnection(ws) {
     });
     ws.send(initialMessage);
 
+    // Send the updated session list to the admin (if admin is connected)
+    if (adminSocket) {
+        const adminUpdateMessage = JSON.stringify({
+            type: 'update_sessions',
+            sessions: sessions.map(s => ({
+                id: s.id,
+                clientCount: s.clients.length
+            }))
+        });
+        adminSocket.send(adminUpdateMessage);
+    }
+
     // Send a heartbeat to keep the connection alive
     const heartbeatInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
@@ -68,36 +86,56 @@ function handleConnection(ws) {
         }
     }, 10000);
 
-    // Send text and binary data periodically
-    const textInterval = setInterval(() => ws.send("hello world!"), 5000);
-    const binaryInterval = setInterval(() => {
-        const binaryData = crypto.randomBytes(8).buffer;
-        ws.send(binaryData);
-    }, 6000);
-
-    // Handle incoming messages from the client
-    ws.on('message', function(data) {
-        if (typeof(data) === "string") {
-            console.log(`String received from client (ID=${clientId}, Session=${session.id}):`, data.slice(0, 100), data.length > 100 ? "..." : "");
-        } else {
-            console.log(`Binary data received from client (ID=${clientId}, Session=${session.id}), size:`, data.byteLength, "bytes");
-        }
-    });
-
     // Handle client disconnection
     ws.on('close', function() {
         console.log(`Client disconnected: ID=${clientId}, Session=${session.id}, IP=${ws._socket.remoteAddress}`);
         clearInterval(heartbeatInterval);
-        clearInterval(textInterval);
-        clearInterval(binaryInterval);
         session.clients = session.clients.filter(client => client !== ws);
 
         if (session.clients.length === 0) {
             console.log(`Session ended: ID=${session.id}`);
             sessions = sessions.filter(s => s !== session);
         }
+
+        // Send the updated session list to the admin (if admin is connected)
+        if (adminSocket) {
+            const adminUpdateMessage = JSON.stringify({
+                type: 'update_sessions',
+                sessions: sessions.map(s => ({
+                    id: s.id,
+                    clientCount: s.clients.length
+                }))
+            });
+            adminSocket.send(adminUpdateMessage);
+        }
     });
 }
+
+// Admin connection handler
+wss.on('connection', (ws) => {
+    // Authenticate admin
+    ws.on('message', (message) => {
+        if (message === 'admin_password') {
+            // Password is correct, make this WebSocket the admin socket
+            adminSocket = ws;
+            console.log("Admin connected!");
+            ws.send(JSON.stringify({ type: 'admin_authenticated' }));
+
+            // Send current sessions data to the admin
+            const adminUpdateMessage = JSON.stringify({
+                type: 'update_sessions',
+                sessions: sessions.map(s => ({
+                    id: s.id,
+                    clientCount: s.clients.length
+                }))
+            });
+            ws.send(adminUpdateMessage);
+        } else {
+            ws.send(JSON.stringify({ type: 'admin_error', message: 'Invalid password' }));
+            ws.close();
+        }
+    });
+});
 
 // Attach WebSocket connection handler
 wss.on('connection', handleConnection);
