@@ -18,7 +18,7 @@ let sessions = []; // Array to hold active sessions
 
 // Handle root route to serve index.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Client', 'WebGL', 'index.html'), (err) => {
+    res.sendFile(path.join(__dirname, 'Client', 'Web', 'index.html'), (err) => {
         if (err) {
             console.error(`Error serving index.html: ${err}`);
             res.status(500).send('Internal Server Error');
