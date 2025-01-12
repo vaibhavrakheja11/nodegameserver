@@ -92,7 +92,7 @@ function handleConnection(ws, req) {
     adminClients.forEach(admin => {
         if (admin.readyState === WebSocket.OPEN) {
             admin.send(JSON.stringify({
-                type: 'update_sessions',
+                type: 'update_session',
                 clientId: clientId,
                 sessionId: session.id,
                 platform: platform,
@@ -148,7 +148,7 @@ function handleConnection(ws, req) {
         adminClients.forEach(admin => {
             if (admin.readyState === WebSocket.OPEN) {
                 admin.send(JSON.stringify({
-                    type: 'update_sessions',
+                    type: 'update_session',
                     clientId: clientId,
                     sessionId: session.id,
                     platform: platform,
