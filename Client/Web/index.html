@@ -32,6 +32,11 @@
             color: red;
             font-weight: bold;
         }
+        .client-info {
+            font-size: 1rem;
+            margin-left: 10px;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -42,8 +47,7 @@
         <button onclick="authenticate()">Authenticate</button>
         <div id="sessions" class="sessions"></div>
         <div id="error" class="error"></div>
-        <!-- Button to open a new client page -->
-        <button id="openClientPage" onclick="openClientPage()" style="display:none;">Open Client in New Tab</button>
+        <button id="openClientPage" onclick="openClientPage()">Open Web Client in New Tab</button>
     </div>
 
     <script>
@@ -92,12 +96,19 @@
                 const sessionDiv = document.createElement('div');
                 sessionDiv.classList.add('session');
                 sessionDiv.textContent = `Session ID: ${session.id}, Clients: ${session.clientCount}`;
+                
+                // Show client platform information
+                const clientInfoDiv = document.createElement('div');
+                clientInfoDiv.classList.add('client-info');
+                session.clients.forEach(client => {
+                    const clientDiv = document.createElement('div');
+                    clientDiv.textContent = `Client ID: ${client.id}, Platform: ${client.platform}`;
+                    clientInfoDiv.appendChild(clientDiv);
+                });
+
+                sessionDiv.appendChild(clientInfoDiv);
                 sessionsDiv.appendChild(sessionDiv);
             });
-            // Show the "Open Client in New Tab" button when sessions are available
-            if (sessions.length > 0) {
-                document.getElementById('openClientPage').style.display = 'inline-block';
-            }
         }
 
         // Function to open a new client page

@@ -41,24 +41,37 @@ function createSession() {
 }
 
 // Function to handle client connection
-function handleConnection(ws) {
+function handleConnection(ws, req) {
     let session = sessions.find(s => s.clients.length < 2);
     if (!session) {
         session = createSession();
     }
 
     const clientId = crypto.randomUUID(); // Generate a unique client ID
+    const userAgent = req.headers['user-agent']; // Get the client’s user-agent to determine platform
+    let platform = 'Unknown';
+
+    if (userAgent.includes('Chrome')) {
+        platform = 'Chrome';
+    } else if (userAgent.includes('Unity')) {
+        platform = 'Unity';
+    } else {
+        platform = 'Other';
+    }
+
     ws.clientId = clientId;
     ws.sessionId = session.id;
+    ws.platform = platform; // Store the platform for each client
     session.clients.push(ws);
 
-    console.log(`Client connected: ID=${clientId}, Session=${session.id}, IP=${ws._socket.remoteAddress}`);
+    console.log(`Client connected: ID=${clientId}, Session=${session.id}, Platform=${platform}, IP=${ws._socket.remoteAddress}`);
 
-    // Send the client ID and session ID to the client
+    // Send the client ID, session ID, and platform to the client
     const initialMessage = JSON.stringify({
         type: 'session',
         clientId: clientId,
-        sessionId: session.id
+        sessionId: session.id,
+        platform: platform
     });
     ws.send(initialMessage);
 
@@ -79,7 +92,11 @@ function handleConnection(ws) {
                 type: 'update_sessions',
                 sessions: sessions.map(session => ({
                     id: session.id,
-                    clientCount: session.clients.length
+                    clientCount: session.clients.length,
+                    clients: session.clients.map(client => ({
+                        id: client.clientId,
+                        platform: client.platform
+                    }))
                 }))
             }));
         } else {
@@ -107,7 +124,11 @@ function handleConnection(ws) {
                         type: 'update_sessions',
                         sessions: sessions.map(session => ({
                             id: session.id,
-                            clientCount: session.clients.length
+                            clientCount: session.clients.length,
+                            clients: session.clients.map(client => ({
+                                id: client.clientId,
+                                platform: client.platform
+                            }))
                         }))
                     }));
                 }
