@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Client Info</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            margin-top: 20vh;
+        }
+        .info {
+            font-size: 1.2rem;
+            margin: 10px 0;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Client Info</h1>
+        <div id="status" class="info">Connecting to WebSocket...</div>
+        <div id="client-id" class="info"></div>
+        <div id="session-id" class="info"></div>
+        <div id="error" class="error"></div>
+    </div>
+
+    <script>
+        const wsUrl = `wss://${window.location.host}`; // Adjust if your WebSocket server uses a different host or protocol
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            document.getElementById('status').textContent = "Connected to WebSocket!";
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'session') {
+                    document.getElementById('client-id').textContent = `Client ID: ${message.clientId}`;
+                    document.getElementById('session-id').textContent = `Session ID: ${message.sessionId}`;
+                }
+            } catch (err) {
+                document.getElementById('error').textContent = `Error parsing message: ${err.message}`;
+            }
+        };
+
+        ws.onerror = (error) => {
+            document.getElementById('status').textContent = "WebSocket error!";
+            document.getElementById('error').textContent = `Error: ${error.message}`;
+        };
+
+        ws.onclose = () => {
+            document.getElementById('status').textContent = "Disconnected from WebSocket.";
+        };
+    </script>
+</body>
+</html>

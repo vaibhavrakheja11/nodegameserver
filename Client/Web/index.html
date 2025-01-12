@@ -42,6 +42,8 @@
         <button onclick="authenticate()">Authenticate</button>
         <div id="sessions" class="sessions"></div>
         <div id="error" class="error"></div>
+        <!-- Button to open a new client page -->
+        <button id="openClientPage" onclick="openClientPage()" style="display:none;">Open Client in New Tab</button>
     </div>
 
     <script>
@@ -92,6 +94,16 @@
                 sessionDiv.textContent = `Session ID: ${session.id}, Clients: ${session.clientCount}`;
                 sessionsDiv.appendChild(sessionDiv);
             });
+            // Show the "Open Client in New Tab" button when sessions are available
+            if (sessions.length > 0) {
+                document.getElementById('openClientPage').style.display = 'inline-block';
+            }
+        }
+
+        // Function to open a new client page
+        function openClientPage() {
+            // Open a new tab with the client WebSocket page
+            window.open('client.html', '_blank');
         }
     </script>
 </body>
