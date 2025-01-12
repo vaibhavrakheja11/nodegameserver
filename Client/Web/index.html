@@ -35,7 +35,7 @@
     </div>
 
     <script>
-        const wsUrl = `ws://${window.location.host}`; // Adjust if your WebSocket server uses a different host or protocol
+        const wsUrl = `wss://${window.location.host}`; // Adjust if your WebSocket server uses a different host or protocol
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
