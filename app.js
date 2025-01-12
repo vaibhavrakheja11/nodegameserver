@@ -106,7 +106,7 @@ function handleConnection(ws, req) {
         console.log(`Message received from client: "${data}"`); // Logs with quotes to check for extra spaces or newlines
         console.log(`Message length: ${data.length}`); // Logs the length of the message to see if there are hidden characters
         console.log(`Message length: ${adminPassword.length}`);
-        if (data === adminPassword) {
+        if (data == adminPassword) {
             console.log('Admin password matched. Authenticating...');
             // Admin authentication
             ws.isAdmin = true;
