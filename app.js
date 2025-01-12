@@ -16,6 +16,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'Client', 'Web')));
 
 let sessions = []; // Array to hold active sessions
+let adminClients = []; // Track admin WebSocket clients
 
 // Handle root route to serve index.html
 app.get('/', (req, res) => {
@@ -40,9 +41,10 @@ function createSession() {
     return session;
 }
 
+// Handle WebSocket connection
 function handleConnection(ws, req) {
-    console.log('New WebSocket connection...'); // Log for debugging
-    
+    console.log('New WebSocket connection...');
+
     let session = sessions.find(s => s.clients.length < 2);
     if (!session) {
         session = createSession();
@@ -69,7 +71,7 @@ function handleConnection(ws, req) {
 
     // Send the client ID, session ID, and platform to the client
     const initialMessage = JSON.stringify({
-        type: 'session',
+        type: 'sessions',
         clientId: clientId,
         sessionId: session.id,
         platform: platform
@@ -85,11 +87,12 @@ function handleConnection(ws, req) {
 
     // Handle incoming messages from the client
     ws.on('message', function(data) {
-        console.log(`Message received from client: ${data}`);  // Debug message received
+        console.log(`Message received from client: ${data}`);
 
         if (data === adminPassword) {
-            // Admin authentication: send session updates
-            ws.isAdmin = true; // Mark the WebSocket as an admin
+            // Admin authentication
+            ws.isAdmin = true;
+            adminClients.push(ws); // Add to admin list
             console.log('Admin authenticated');
             ws.send(JSON.stringify({
                 type: 'update_sessions',
@@ -103,7 +106,29 @@ function handleConnection(ws, req) {
                 }))
             }));
         } else {
-            console.log(`Message from client (ID=${clientId}, Session=${session.id}): ${data}`);
+            // Client-specific message handling (e.g., join, leave)
+            if (data === 'join') {
+                session.clients.push(ws);
+            } else if (data === 'leave') {
+                session.clients = session.clients.filter(client => client !== ws);
+            }
+
+            // Notify all admins about client actions
+            adminClients.forEach(admin => {
+                if (admin.readyState === WebSocket.OPEN) {
+                    admin.send(JSON.stringify({
+                        type: 'update_sessions',
+                        sessions: sessions.map(session => ({
+                            id: session.id,
+                            clientCount: session.clients.length,
+                            clients: session.clients.map(client => ({
+                                id: client.clientId,
+                                platform: client.platform
+                            }))
+                        }))
+                    }));
+                }
+            });
         }
     });
 
@@ -118,25 +143,22 @@ function handleConnection(ws, req) {
             sessions = sessions.filter(s => s !== session);
         }
 
-        // Send session update to admin
-        if (ws.isAdmin) {
-            // Notify admin about session update
-            wss.clients.forEach(client => {
-                if (client.isAdmin) {
-                    client.send(JSON.stringify({
-                        type: 'update_sessions',
-                        sessions: sessions.map(session => ({
-                            id: session.id,
-                            clientCount: session.clients.length,
-                            clients: session.clients.map(client => ({
-                                id: client.clientId,
-                                platform: client.platform
-                            }))
+        // Notify admins about client disconnection
+        adminClients.forEach(admin => {
+            if (admin.readyState === WebSocket.OPEN) {
+                admin.send(JSON.stringify({
+                    type: 'update_sessions',
+                    sessions: sessions.map(session => ({
+                        id: session.id,
+                        clientCount: session.clients.length,
+                        clients: session.clients.map(client => ({
+                            id: client.clientId,
+                            platform: client.platform
                         }))
-                    }));
-                }
-            });
-        }
+                    }))
+                }));
+            }
+        });
     });
 }
 
