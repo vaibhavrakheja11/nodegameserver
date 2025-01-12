@@ -40,8 +40,9 @@ function createSession() {
     return session;
 }
 
-// Function to handle client connection
 function handleConnection(ws, req) {
+    console.log('New WebSocket connection...'); // Log for debugging
+    
     let session = sessions.find(s => s.clients.length < 2);
     if (!session) {
         session = createSession();
@@ -84,12 +85,12 @@ function handleConnection(ws, req) {
 
     // Handle incoming messages from the client
     ws.on('message', function(data) {
+        console.log(`Message received from client: ${data}`);  // Debug message received
+
         if (data === adminPassword) {
             // Admin authentication: send session updates
             ws.isAdmin = true; // Mark the WebSocket as an admin
             console.log('Admin authenticated');
-
-            // Send initial session information after successful authentication
             ws.send(JSON.stringify({
                 type: 'update_sessions',
                 sessions: sessions.map(session => ({
@@ -103,39 +104,8 @@ function handleConnection(ws, req) {
             }));
         } else {
             console.log(`Message from client (ID=${clientId}, Session=${session.id}): ${data}`);
-
-            // Example: If a client sends a "join" or "leave" message, handle that
-            if (data === 'join') {
-                // Client joins a session
-                session.clients.push(ws);
-                console.log(`Client ${clientId} joined session ${session.id}`);
-            } else if (data === 'leave') {
-                // Client leaves the session
-                session.clients = session.clients.filter(client => client !== ws);
-                console.log(`Client ${clientId} left session ${session.id}`);
-            }
-
-            // After any change, send updated session list to the admin
-            if (ws.isAdmin) {
-                wss.clients.forEach(client => {
-                    if (client.isAdmin) {
-                        client.send(JSON.stringify({
-                            type: 'update_sessions',
-                            sessions: sessions.map(session => ({
-                                id: session.id,
-                                clientCount: session.clients.length,
-                                clients: session.clients.map(client => ({
-                                    id: client.clientId,
-                                    platform: client.platform
-                                }))
-                            }))
-                        }));
-                    }
-                });
-            }
         }
     });
-
 
     // Handle client disconnection
     ws.on('close', function() {
