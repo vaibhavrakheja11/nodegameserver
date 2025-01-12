@@ -88,6 +88,8 @@ function handleConnection(ws, req) {
             // Admin authentication: send session updates
             ws.isAdmin = true; // Mark the WebSocket as an admin
             console.log('Admin authenticated');
+
+            // Send initial session information after successful authentication
             ws.send(JSON.stringify({
                 type: 'update_sessions',
                 sessions: sessions.map(session => ({
@@ -101,8 +103,39 @@ function handleConnection(ws, req) {
             }));
         } else {
             console.log(`Message from client (ID=${clientId}, Session=${session.id}): ${data}`);
+
+            // Example: If a client sends a "join" or "leave" message, handle that
+            if (data === 'join') {
+                // Client joins a session
+                session.clients.push(ws);
+                console.log(`Client ${clientId} joined session ${session.id}`);
+            } else if (data === 'leave') {
+                // Client leaves the session
+                session.clients = session.clients.filter(client => client !== ws);
+                console.log(`Client ${clientId} left session ${session.id}`);
+            }
+
+            // After any change, send updated session list to the admin
+            if (ws.isAdmin) {
+                wss.clients.forEach(client => {
+                    if (client.isAdmin) {
+                        client.send(JSON.stringify({
+                            type: 'update_sessions',
+                            sessions: sessions.map(session => ({
+                                id: session.id,
+                                clientCount: session.clients.length,
+                                clients: session.clients.map(client => ({
+                                    id: client.clientId,
+                                    platform: client.platform
+                                }))
+                            }))
+                        }));
+                    }
+                });
+            }
         }
     });
+
 
     // Handle client disconnection
     ws.on('close', function() {

@@ -62,9 +62,10 @@
                 };
 
                 ws.onmessage = (event) => {
-                    console.log("event recieved");
+                    console.log("Received message:", event.data); // Add this for debugging
                     const message = JSON.parse(event.data);
                     if (message.type === 'update_sessions') {
+                        console.log("Updating sessions with the following data:", message.sessions); // Debug output
                         updateSessionList(message.sessions);
                     } else if (message.type === 'admin_error') {
                         document.getElementById('error').textContent = message.message;
@@ -84,11 +85,11 @@
             }
         }
 
-        // Function to update session list
         function updateSessionList(sessions) {
-            console.log("here");
+            console.log("Updating session list", sessions); // Add debug log
             const sessionsDiv = document.getElementById('sessions');
-            sessionsDiv.innerHTML = '';
+            sessionsDiv.innerHTML = ''; // Clear existing content
+
             sessions.forEach(session => {
                 const sessionDiv = document.createElement('div');
                 sessionDiv.classList.add('session');
@@ -104,6 +105,7 @@
                 sessionsDiv.appendChild(sessionDiv);
             });
         }
+
 
         // Function to open a new client page
         function openClientPage() {
