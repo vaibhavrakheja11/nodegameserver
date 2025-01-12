@@ -62,7 +62,7 @@
                 };
 
                 ws.onmessage = (event) => {
-                    console.Log("event recieved");
+                    console.log("event recieved");
                     const message = JSON.parse(event.data);
                     if (message.type === 'update_sessions') {
                         updateSessionList(message.sessions);
