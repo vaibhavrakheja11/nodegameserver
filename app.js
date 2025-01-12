@@ -12,7 +12,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 
 // Serve static files from the 'Client/WebGL' directory
-app.use(express.static(path.join(__dirname, 'Client', 'WebGL')));
+app.use(express.static(path.join(__dirname, 'Client', 'Web')));
 
 let sessions = []; // Array to hold active sessions
 
