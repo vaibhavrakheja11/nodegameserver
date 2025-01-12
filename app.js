@@ -16,7 +16,6 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'Client', 'Web')));
 
 let sessions = []; // Array to hold active sessions
-let adminClients = []; // Track admin WebSocket clients
 
 // Handle root route to serve index.html
 app.get('/', (req, res) => {
@@ -41,10 +40,12 @@ function createSession() {
     return session;
 }
 
+let adminClients = []; // Track admin WebSocket clients
+
 // Handle WebSocket connection
 function handleConnection(ws, req) {
-    console.log('New WebSocket connection...');
-
+    console.log('New WebSocket connection...'); // Log for debugging
+    
     let session = sessions.find(s => s.clients.length < 2);
     if (!session) {
         session = createSession();
@@ -161,6 +162,7 @@ function handleConnection(ws, req) {
         });
     });
 }
+
 
 // Attach WebSocket connection handler
 wss.on('connection', handleConnection);
