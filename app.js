@@ -40,12 +40,14 @@ function createSession() {
     return session;
 }
 
-let adminClients = []; // Track admin WebSocket clients
+let adminClients = [];
 
+// Handle WebSocket connection
 // Handle WebSocket connection
 function handleConnection(ws, req) {
     console.log('New WebSocket connection...'); // Log for debugging
-    
+
+    // Try to find an existing session with less than 2 clients
     let session = sessions.find(s => s.clients.length < 2);
     if (!session) {
         session = createSession();
@@ -86,6 +88,19 @@ function handleConnection(ws, req) {
         }
     }, 10000);
 
+    // Notify all admins about the new client connection
+    adminClients.forEach(admin => {
+        if (admin.readyState === WebSocket.OPEN) {
+            admin.send(JSON.stringify({
+                type: 'client_joined',
+                clientId: clientId,
+                sessionId: session.id,
+                platform: platform,
+                message: `Client with ID ${clientId} has joined the session.`
+            }));
+        }
+    });
+
     // Handle incoming messages from the client
     ws.on('message', function(data) {
         console.log(`Message received from client: ${data}`);
@@ -114,7 +129,7 @@ function handleConnection(ws, req) {
                 session.clients = session.clients.filter(client => client !== ws);
             }
 
-            // Notify all admins about client actions
+            // Notify all admins about client actions (join/leave)
             adminClients.forEach(admin => {
                 if (admin.readyState === WebSocket.OPEN) {
                     admin.send(JSON.stringify({
@@ -148,20 +163,17 @@ function handleConnection(ws, req) {
         adminClients.forEach(admin => {
             if (admin.readyState === WebSocket.OPEN) {
                 admin.send(JSON.stringify({
-                    type: 'update_sessions',
-                    sessions: sessions.map(session => ({
-                        id: session.id,
-                        clientCount: session.clients.length,
-                        clients: session.clients.map(client => ({
-                            id: client.clientId,
-                            platform: client.platform
-                        }))
-                    }))
+                    type: 'client_disconnected',
+                    clientId: clientId,
+                    sessionId: session.id,
+                    platform: platform,
+                    message: `Client with ID ${clientId} has disconnected.`
                 }));
             }
         });
     });
 }
+
 
 
 // Attach WebSocket connection handler
