@@ -42,7 +42,7 @@
         <button onclick="authenticate()">Authenticate</button>
         <div id="sessions" class="sessions"></div>
         <div id="error" class="error"></div>
-        <button id="openClientPage" onclick="openClientPage()" style="display:none;">Open Client in New Tab</button>
+        <button id="openClientPage" onclick="openClientPage()">Open Web Client in New Tab</button>
     </div>
 
     <script>
@@ -62,6 +62,7 @@
                 };
 
                 ws.onmessage = (event) => {
+                    console.Log("event recieved");
                     const message = JSON.parse(event.data);
                     if (message.type === 'update_sessions') {
                         updateSessionList(message.sessions);
@@ -85,6 +86,7 @@
 
         // Function to update session list
         function updateSessionList(sessions) {
+            console.log("here");
             const sessionsDiv = document.getElementById('sessions');
             sessionsDiv.innerHTML = '';
             sessions.forEach(session => {
@@ -101,10 +103,6 @@
 
                 sessionsDiv.appendChild(sessionDiv);
             });
-            // Show the "Open Client in New Tab" button when sessions are available
-            if (sessions.length > 0) {
-                document.getElementById('openClientPage').style.display = 'block';
-            }
         }
 
         // Function to open a new client page
