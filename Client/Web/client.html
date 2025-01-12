@@ -45,7 +45,7 @@
         ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                if (message.type === 'session') {
+                if (message.type === 'sessions') {
                     document.getElementById('client-id').textContent = `Client ID: ${message.clientId}`;
                     document.getElementById('session-id').textContent = `Session ID: ${message.sessionId}`;
                 }
