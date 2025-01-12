@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const adminPassword = 'admin_password'; // Password for admin authentication
+const adminPassword = "admin_password"; // Password for admin authentication
 
 // CORS middleware to allow requests from any origin
 app.use(cors());
@@ -103,7 +103,11 @@ function handleConnection(ws, req) {
 
     // Handle incoming messages from the client
     ws.on('message', function(data) {
-        console.log(`Message received from client: ${data}`);
+        console.log(`Message received from client: "${data}"`); // Logs with quotes to check for extra spaces or newlines
+        console.log(`Message length: ${data.length}`); // Logs the length of the message to see if there are hidden characters
+    
+        // Trim the data to remove any extra spaces or newline characters
+        const trimmedData = data.trim();    
 
         if (data === adminPassword) {
             console.log('Admin password matched. Authenticating...');
