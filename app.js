@@ -92,7 +92,7 @@ function handleConnection(ws, req) {
     adminClients.forEach(admin => {
         if (admin.readyState === WebSocket.OPEN) {
             admin.send(JSON.stringify({
-                type: 'client_joined',
+                type: 'update_sessions',
                 clientId: clientId,
                 sessionId: session.id,
                 platform: platform,
@@ -128,23 +128,6 @@ function handleConnection(ws, req) {
             } else if (data === 'leave') {
                 session.clients = session.clients.filter(client => client !== ws);
             }
-
-            // Notify all admins about client actions (join/leave)
-            adminClients.forEach(admin => {
-                if (admin.readyState === WebSocket.OPEN) {
-                    admin.send(JSON.stringify({
-                        type: 'update_sessions',
-                        sessions: sessions.map(session => ({
-                            id: session.id,
-                            clientCount: session.clients.length,
-                            clients: session.clients.map(client => ({
-                                id: client.clientId,
-                                platform: client.platform
-                            }))
-                        }))
-                    }));
-                }
-            });
         }
     });
 
@@ -163,7 +146,7 @@ function handleConnection(ws, req) {
         adminClients.forEach(admin => {
             if (admin.readyState === WebSocket.OPEN) {
                 admin.send(JSON.stringify({
-                    type: 'client_disconnected',
+                    type: 'update_sessions',
                     clientId: clientId,
                     sessionId: session.id,
                     platform: platform,
