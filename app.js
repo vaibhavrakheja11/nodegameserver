@@ -128,10 +128,10 @@ function handleConnection(ws, req) {
             }
     
             // Handle refresh request from admin
-            if (message.type == "refresh_sessions" && ws.isAdmin) {
-                console.log('Admin requested session refresh.');
-    
-                // Send updated session data to the admin
+            if (message.type == "refresh_sessions") {
+                console.log('Admin requested session refresh and is admin:' + ws.isAdmin);
+                if(!ws.isAdmin)
+                {// Send updated session data to the admin
                 ws.send(
                     JSON.stringify({
                         type: 'update_sessions',
@@ -144,7 +144,7 @@ function handleConnection(ws, req) {
                             })),
                         })),
                     })
-                );
+                );}
             }
     
             // Handle client join or leave
