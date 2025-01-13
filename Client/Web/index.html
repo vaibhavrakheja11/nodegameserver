@@ -82,55 +82,73 @@
     <script>
         // Global WebSocket instance
         let ws;
+        let isAdmin = false;
 
         // Predefined admin password (this should be handled securely in production)
         const adminPassword = 'admin_password';
 
-        // Authenticate and connect as admin
+        // Authenticate the user
         function authenticate() {
             const password = document.getElementById('password').value;
 
             if (password === adminPassword) {
-                // Connect to the WebSocket server
-                ws = new WebSocket(`wss://${window.location.host}`);
-
-                ws.onopen = () => {
-                    document.getElementById('status').textContent = "Connected as admin!";
-                    ws.send(adminPassword); // Authenticate with the server
-
-                    // Disable Authenticate button and enable Refresh button
-                    const authButton = document.getElementById('authButton');
-                    authButton.disabled = true;
-                    authButton.classList.add('button-disabled');
-
-                    document.getElementById('refreshButton').style.display = 'inline-block';
-                };
-
-                ws.onmessage = (event) => {
-                    console.log("Received message:", event.data);
-                    try {
-                        const message = JSON.parse(event.data);
-                        if (message.type === 'update_sessions') {
-                            updateSessionList(message.sessions);
-                        } else if (message.type === 'admin_error') {
-                            document.getElementById('error').textContent = message.message;
-                        }
-                    } catch (e) {
-                        console.error("Error parsing WebSocket message:", e);
-                    }
-                };
-
-                ws.onerror = (error) => {
-                    document.getElementById('status').textContent = "WebSocket error!";
-                    document.getElementById('error').textContent = `Error: ${error.message}`;
-                };
-
-                ws.onclose = () => {
-                    document.getElementById('status').textContent = "Disconnected from WebSocket.";
-                };
+                isAdmin = true;
+                document.getElementById('status').textContent = "Authenticated as admin!";
+                connectWebSocket();
             } else {
                 document.getElementById('error').textContent = "Incorrect password.";
             }
+        }
+
+        // Establish WebSocket connection
+        function connectWebSocket() {
+            ws = new WebSocket(`wss://${window.location.host}`);
+
+            ws.onopen = () => {
+                document.getElementById('status').textContent = "Connected to WebSocket.";
+                ws.send(adminPassword); // Send authentication
+
+                enableAdminUI();
+            };
+
+            ws.onmessage = handleWebSocketMessage;
+            ws.onerror = handleWebSocketError;
+            ws.onclose = handleWebSocketClose;
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(event) {
+            console.log("Received message:", event.data);
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'update_sessions') {
+                    updateSessionList(message.sessions);
+                } else if (message.type === 'admin_error') {
+                    document.getElementById('error').textContent = message.message;
+                }
+            } catch (e) {
+                console.error("Error parsing WebSocket message:", e);
+            }
+        }
+
+        // Handle WebSocket errors
+        function handleWebSocketError(error) {
+            document.getElementById('status').textContent = "WebSocket error!";
+            document.getElementById('error').textContent = `Error: ${error.message}`;
+        }
+
+        // Handle WebSocket closure
+        function handleWebSocketClose() {
+            document.getElementById('status').textContent = "Disconnected from WebSocket.";
+        }
+
+        // Enable admin-specific UI elements
+        function enableAdminUI() {
+            const authButton = document.getElementById('authButton');
+            authButton.disabled = true;
+            authButton.classList.add('button-disabled');
+
+            document.getElementById('refreshButton').style.display = 'inline-block';
         }
 
         // Refresh the session list
@@ -181,8 +199,7 @@
             }
         }
 
-
-        // Function to open a new client page
+        // Open a new client page
         function openClientPage() {
             window.open('client.html', '_blank');
         }
