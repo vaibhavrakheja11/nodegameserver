@@ -105,7 +105,7 @@ function handleConnection(ws, req) {
             const message = JSON.parse(data);
     
             // Authenticate admin
-            if (message === adminPassword) {
+            if (message == adminPassword) {
                 ws.isAdmin = true;
                 adminClients.push(ws);
                 console.log('Admin authenticated.');

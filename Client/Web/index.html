@@ -91,7 +91,7 @@
         function authenticate() {
             const password = document.getElementById('password').value;
 
-            if (password === adminPassword) {
+            if (password == adminPassword) {
                 isAdmin = true;
                 document.getElementById('status').textContent = "Authenticated as admin!";
                 connectWebSocket();
@@ -121,9 +121,9 @@
             console.log("Received message:", event.data);
             try {
                 const message = JSON.parse(event.data);
-                if (message.type === 'update_sessions') {
+                if (message.type == 'update_sessions') {
                     updateSessionList(message.sessions);
-                } else if (message.type === 'admin_error') {
+                } else if (message.type == 'admin_error') {
                     document.getElementById('error').textContent = message.message;
                 }
             } catch (e) {
