@@ -43,8 +43,6 @@ function createSession() {
 
 let adminClients = [];
 
-// Handle WebSocket connection
-// Handle WebSocket connection
 function handleConnection(ws, req) {
     console.log('New WebSocket connection...'); // Log for debugging
 
@@ -92,7 +90,7 @@ function handleConnection(ws, req) {
     adminClients.forEach(admin => {
         if (admin.readyState === WebSocket.OPEN) {
             admin.send(JSON.stringify({
-                type: 'update_session',
+                type: 'update_sessions',
                 clientId: clientId,
                 sessionId: session.id,
                 platform: platform,
@@ -103,15 +101,11 @@ function handleConnection(ws, req) {
 
     // Handle incoming messages from the client
     ws.on('message', function(data) {
-        console.log(`Message received from client: "${data}"`); // Logs with quotes to check for extra spaces or newlines
-        console.log(`Message length: ${data.length}`); // Logs the length of the message to see if there are hidden characters
-        console.log(`Message length: ${adminPassword.length}`);
         if (data == adminPassword) {
-            console.log('Admin password matched. Authenticating...');
-            // Admin authentication
             ws.isAdmin = true;
-            adminClients.push(ws); // Add to admin list
+            adminClients.push(ws); 
             console.log('Admin authenticated');
+
             ws.send(JSON.stringify({
                 type: 'update_sessions',
                 sessions: sessions.map(session => ({
@@ -148,7 +142,7 @@ function handleConnection(ws, req) {
         adminClients.forEach(admin => {
             if (admin.readyState === WebSocket.OPEN) {
                 admin.send(JSON.stringify({
-                    type: 'update_session',
+                    type: 'update_sessions',
                     clientId: clientId,
                     sessionId: session.id,
                     platform: platform,
