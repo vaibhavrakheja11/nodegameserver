@@ -103,7 +103,7 @@ function handleConnection(ws, req) {
     ws.on('message', function (data) {
         try {
             const message = JSON.parse(data);
-    
+            console.log(data);
             // Authenticate admin
             if (message == adminPassword) {
                 ws.isAdmin = true;

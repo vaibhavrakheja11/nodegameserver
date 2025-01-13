@@ -85,7 +85,7 @@
         let isAdmin = false;
 
         // Predefined admin password (this should be handled securely in production)
-        const adminPassword = 'admin_password';
+        const adminPassword = "admin_password";
 
         // Authenticate the user
         function authenticate() {
@@ -154,7 +154,7 @@
         // Refresh the session list
         function refreshSessions() {
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'refresh_sessions' }));
+                ws.send(JSON.stringify({ type: "refresh_sessions" }));
                 console.log("Refresh request sent to WebSocket server.");
             } else {
                 document.getElementById('error').textContent = "WebSocket is not connected.";
