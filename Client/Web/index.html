@@ -61,6 +61,10 @@
         .button:hover {
             background-color: #45a049;
         }
+        .button-disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -68,7 +72,8 @@
         <h1>Admin WebSocket Control</h1>
         <div id="status" class="info">Enter password to access the admin panel:</div>
         <input type="password" id="password" />
-        <button onclick="authenticate()">Authenticate</button>
+        <button id="authButton" onclick="authenticate()" class="button">Authenticate</button>
+        <button id="refreshButton" onclick="refreshSessions()" class="button" style="display: none;">Refresh Sessions</button>
         <div id="sessions" class="sessions"></div>
         <div id="error" class="error"></div>
         <button id="openClientPage" onclick="openClientPage()" class="button">Open Web Client in New Tab</button>
@@ -78,7 +83,6 @@
         let ws;
         const adminPassword = 'admin_password'; // Set this to a secure password
 
-        // Function to authenticate and connect as admin
         function authenticate() {
             const password = document.getElementById('password').value;
             if (password === adminPassword) {
@@ -88,16 +92,24 @@
                 ws.onopen = () => {
                     document.getElementById('status').textContent = "Connected as admin!";
                     ws.send(adminPassword); // Send the password to authenticate
+
+                    // Disable the "Authenticate" button and show the "Refresh" button
+                    document.getElementById('authButton').disabled = true;
+                    document.getElementById('authButton').classList.add('button-disabled');
+                    document.getElementById('refreshButton').style.display = 'inline-block';
                 };
 
                 ws.onmessage = (event) => {
-                    console.log("Received message:", event.data); // Add this for debugging
-                    const message = JSON.parse(event.data);
-                    if (message.type == 'update_sessions') {
-                        console.log("Updating sessions with the following data:", message.sessions); // Debug output
-                        updateSessionList(message.sessions);
-                    } else if (message.type === 'admin_error') {
-                        document.getElementById('error').textContent = message.message;
+                    console.log("Received message:", event.data);
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'update_sessions') {
+                            updateSessionList(message.sessions);
+                        } else if (message.type === 'admin_error') {
+                            document.getElementById('error').textContent = message.message;
+                        }
+                    } catch (e) {
+                        console.error("Error parsing WebSocket message:", e);
                     }
                 };
 
@@ -114,24 +126,28 @@
             }
         }
 
+        // Function to update session list
         function updateSessionList(sessions) {
-            if(sessions == undefined) return;
-            console.log("Updating session list", sessions); // Add debug log
+            if (!sessions) return;
             const sessionsDiv = document.getElementById('sessions');
             sessionsDiv.innerHTML = ''; // Clear existing content
 
-            if (sessions && sessions.length > 0) {
+            if (Array.isArray(sessions) && sessions.length > 0) {
                 sessions.forEach(session => {
                     const sessionDiv = document.createElement('div');
                     sessionDiv.classList.add('session');
                     sessionDiv.innerHTML = `<strong>Session ID:</strong> ${session.id} <br> <strong>Clients:</strong> ${session.clientCount}`;
 
-                    session.clients.forEach(client => {
-                        const clientDiv = document.createElement('div');
-                        clientDiv.classList.add('client');
-                        clientDiv.innerHTML = `<strong>Client ID:</strong> ${client.id} <br> <strong>Platform:</strong> ${client.platform}`;
-                        sessionDiv.appendChild(clientDiv);
-                    });
+                    if (session.clients && session.clients.length > 0) {
+                        session.clients.forEach(client => {
+                            const clientDiv = document.createElement('div');
+                            clientDiv.classList.add('client');
+                            clientDiv.innerHTML = `<strong>Client ID:</strong> ${client.id} <br> <strong>Platform:</strong> ${client.platform}`;
+                            sessionDiv.appendChild(clientDiv);
+                        });
+                    } else {
+                        sessionDiv.innerHTML += "<p>No clients in this session.</p>";
+                    }
 
                     sessionsDiv.appendChild(sessionDiv);
                 });
@@ -140,9 +156,18 @@
             }
         }
 
+        // Refresh the session list
+        function refreshSessions() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'refresh_sessions' }));
+                console.log("Refresh request sent to WebSocket server.");
+            } else {
+                document.getElementById('error').textContent = "WebSocket is not connected.";
+            }
+        }
+
         // Function to open a new client page
         function openClientPage() {
-            // Open a new tab with the client WebSocket page
             window.open('client.html', '_blank');
         }
     </script>
