@@ -154,7 +154,7 @@
         // Refresh the session list
         function refreshSessions() {
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "refresh_sessions" }));
+                ws.send("refresh_sessions");
                 console.log("Refresh request sent to WebSocket server.");
             } else {
                 document.getElementById('error').textContent = "WebSocket is not connected.";

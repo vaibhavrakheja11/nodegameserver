@@ -102,7 +102,7 @@ function handleConnection(ws, req) {
     // Handle incoming messages from the client
     ws.on('message', function (data) {
         try {
-            const message = JSON.parse(data);
+            const message = data;
             console.log(data);
             // Authenticate admin
             if (message == adminPassword) {
