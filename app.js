@@ -128,7 +128,7 @@ function handleConnection(ws, req) {
             }
     
             // Handle refresh request from admin
-            if (message.type == "refresh_sessions") {
+            if (message == "refresh_sessions") {
                 console.log('Admin requested session refresh and is admin:' + ws.isAdmin);
                 if(!ws.isAdmin)
                 {// Send updated session data to the admin
