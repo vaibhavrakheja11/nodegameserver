@@ -100,32 +100,64 @@ function handleConnection(ws, req) {
     });
 
     // Handle incoming messages from the client
-    ws.on('message', function(data) {
-        if (data == adminPassword) {
-            ws.isAdmin = true;
-            adminClients.push(ws); 
-            console.log('Admin authenticated');
-
-            ws.send(JSON.stringify({
-                type: 'update_sessions',
-                sessions: sessions.map(session => ({
-                    id: session.id,
-                    clientCount: session.clients.length,
-                    clients: session.clients.map(client => ({
-                        id: client.clientId,
-                        platform: client.platform
-                    }))
-                }))
-            }));
-        } else {
-            // Client-specific message handling (e.g., join, leave)
-            if (data === 'join') {
+    ws.on('message', function (data) {
+        try {
+            const message = JSON.parse(data);
+    
+            // Authenticate admin
+            if (message === adminPassword) {
+                ws.isAdmin = true;
+                adminClients.push(ws);
+                console.log('Admin authenticated.');
+    
+                // Send all session data to the admin
+                ws.send(
+                    JSON.stringify({
+                        type: 'update_sessions',
+                        sessions: sessions.map(session => ({
+                            id: session.id,
+                            clientCount: session.clients.length,
+                            clients: session.clients.map(client => ({
+                                id: client.clientId,
+                                platform: client.platform,
+                            })),
+                        })),
+                    })
+                );
+                return;
+            }
+    
+            // Handle refresh request from admin
+            if (message.type === 'refresh_sessions' && ws.isAdmin) {
+                console.log('Admin requested session refresh.');
+    
+                // Send updated session data to the admin
+                ws.send(
+                    JSON.stringify({
+                        type: 'update_sessions',
+                        sessions: sessions.map(session => ({
+                            id: session.id,
+                            clientCount: session.clients.length,
+                            clients: session.clients.map(client => ({
+                                id: client.clientId,
+                                platform: client.platform,
+                            })),
+                        })),
+                    })
+                );
+            }
+    
+            // Handle client join or leave
+            if (message.type === 'join') {
                 session.clients.push(ws);
-            } else if (data === 'leave') {
+            } else if (message.type === 'leave') {
                 session.clients = session.clients.filter(client => client !== ws);
             }
+        } catch (error) {
+            console.error('Invalid message format:', data);
         }
     });
+    
 
     // Handle client disconnection
     ws.on('close', function() {
