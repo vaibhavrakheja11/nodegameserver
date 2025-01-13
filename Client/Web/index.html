@@ -92,20 +92,14 @@
 
                 ws.onmessage = (event) => {
                     console.log("Received message:", event.data); // Add this for debugging
-                    try {
-                        const message = JSON.parse(event.data);
-
-                        // Check the type of message received
-                        if (message.type === 'update_sessions') {
-                            console.log("Updating sessions with the following data:", message.sessions); // Debug output
-                            updateSessionList(message.sessions);
-                        } else if(message.type === 'update_session'){
-                            updateSessionList(message); // Handle individual session update
-                        } else if (message.type === 'admin_error') {
-                            document.getElementById('error').textContent = message.message;
-                        }
-                    } catch (e) {
-                        console.error("Error parsing WebSocket message:", e);
+                    const message = JSON.parse(event.data);
+                    if (message.type == 'update_sessions') {
+                        console.log("Updating sessions with the following data:", message.sessions); // Debug output
+                        updateSessionList(message.sessions);
+                    } else if(message.type == 'update_session'){
+                        updateSessionList(message);
+                    } else if (message.type === 'admin_error') {
+                        document.getElementById('error').textContent = message.message;
                     }
                 };
 
@@ -123,27 +117,23 @@
         }
 
         function updateSessionList(sessions) {
-            if (!sessions) return; // Safeguard against undefined sessions
+            if(sessions == undefined) return;
             console.log("Updating session list", sessions); // Add debug log
             const sessionsDiv = document.getElementById('sessions');
             sessionsDiv.innerHTML = ''; // Clear existing content
 
-            if (Array.isArray(sessions) && sessions.length > 0) {
+            if (sessions && sessions.length > 0) {
                 sessions.forEach(session => {
                     const sessionDiv = document.createElement('div');
                     sessionDiv.classList.add('session');
                     sessionDiv.innerHTML = `<strong>Session ID:</strong> ${session.id} <br> <strong>Clients:</strong> ${session.clientCount}`;
 
-                    if (session.clients && session.clients.length > 0) {
-                        session.clients.forEach(client => {
-                            const clientDiv = document.createElement('div');
-                            clientDiv.classList.add('client');
-                            clientDiv.innerHTML = `<strong>Client ID:</strong> ${client.id} <br> <strong>Platform:</strong> ${client.platform}`;
-                            sessionDiv.appendChild(clientDiv);
-                        });
-                    } else {
-                        sessionDiv.innerHTML += "<p>No clients in this session.</p>";
-                    }
+                    session.clients.forEach(client => {
+                        const clientDiv = document.createElement('div');
+                        clientDiv.classList.add('client');
+                        clientDiv.innerHTML = `<strong>Client ID:</strong> ${client.id} <br> <strong>Platform:</strong> ${client.platform}`;
+                        sessionDiv.appendChild(clientDiv);
+                    });
 
                     sessionsDiv.appendChild(sessionDiv);
                 });
@@ -159,5 +149,4 @@
         }
     </script>
 </body>
-
 </html>
